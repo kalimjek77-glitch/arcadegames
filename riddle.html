@@ -1,0 +1,299 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Pinoy Bugtong Game</title>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Poppins:wght@400;600&display=swap');
+
+body {
+    font-family: 'Poppins', sans-serif;
+    background: linear-gradient(135deg, #FFCC70, #FF8177);
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    min-height: 100vh;
+    margin: 0;
+}
+
+.container {
+    background: #fff;
+    width: 95%;
+    max-width: 420px;
+    border-radius: 20px;
+    padding: 25px 20px;
+    text-align: center;
+    box-shadow: 0 12px 25px rgba(0,0,0,0.25);
+    display: flex;
+    flex-direction: column;
+    gap: 15px;
+}
+
+header h1 { font-size: 1.9rem; color: #E63946; }
+header p { font-weight: 600; color: #333; }
+
+.riddle-box {
+    background: #FFE0B2;
+    padding: 20px;
+    border-radius: 15px;
+    min-height: 80px;
+    font-size: 1.1rem;
+    color: #333;
+    box-shadow: 0 4px 10px rgba(0,0,0,0.1);
+}
+
+.choices { display: grid; grid-template-columns: 1fr; gap: 12px; }
+.choice {
+    padding: 12px;
+    background: #F77F00;
+    border: none;
+    border-radius: 12px;
+    color: white;
+    font-weight: 600;
+    cursor: pointer;
+    transition: 0.2s;
+}
+.choice:hover { background: #D95D00; }
+
+#feedback { font-weight: 600; font-size: 1rem; color: #333; }
+.hidden { display: none; }
+
+button#startBtn {
+    margin-top: 10px;
+    padding: 12px 20px;
+    background: #06D6A0;
+    border: none;
+    color: white;
+    font-weight: 600;
+    border-radius: 12px;
+    cursor: pointer;
+    font-size: 1rem;
+    transition: 0.2s;
+}
+button#startBtn:hover { background: #05A57A; }
+
+@media (max-width: 500px) {
+    .riddle-box { font-size: 1rem; padding: 18px; }
+    .choice { font-size: 0.95rem; padding: 10px; }
+    button#startBtn { font-size: 0.95rem; padding: 10px 15px; }
+}
+</style>
+</head>
+<body>
+<div class="container">
+    <header>
+        <h1>🧠 Bugtong Challenge</h1>
+        <p>Lives: <span id="lives">10</span> | Score: <span id="score">0</span></p>
+    </header>
+
+    <div id="riddleBox" class="riddle-box">
+        <p id="riddleTxt">Press Start to begin!</p>
+    </div>
+
+    <div class="choices">
+        <button class="choice" id="choiceA"></button>
+        <button class="choice" id="choiceB"></button>
+        <button class="choice" id="choiceC"></button>
+    </div>
+
+    <div id="feedback"></div>
+    <button id="startBtn">Start Game</button>
+</div>
+
+<!-- Audio -->
+<audio id="correctSound" src="correct.mp3"></audio>
+<audio id="wrongSound" src="wrong.mp3"></audio>
+<audio id="gameOverSound" src="gameover.mp3"></audio>
+
+<script>
+// 100 Pinoy Bugtong (sample, truncated)
+const riddles = [
+{q:"Bumili ako ng alipin, mataas pa sa akin.", a:"Sumbrero"},
+{q:"Isang bayabas, pito ang butas.", a:"Ulo ng tao"},
+{q:"Dumaan ang hari, nagkagatan ang mga pari.", a:"Siper"},
+{q:"Munting hayop na pangahas, aaligid-aligid sa ningas.", a:"Gamu-gamo"},
+{q:"Isang butil ng palay, sakop ang buong bahay.", a:"Ilaw"},
+{q:"Tinaga ko ang puno, sa dulo nagdurugo.", a:"Gumamela"},
+{q:"Ako ay may kaibigan, kasama ko kahit saan.", a:"Anino"},
+{q:"Kumot ng hari, hindi mahati-hati.", a:"Tubig"},
+{q:"Hindi naman hari, hindi naman pare, nagsusuot ng sari-sari.", a:"Sampayan"},
+{q:"Dugtong-dugtong, magkakarugtong, tanikalang umuugong.", a:"Tren"},
+{q:"Naabot na ng kamay, ipinagawa pa sa tulay.", a:"Kubyertos"},
+{q:"Kastila kung natutulog kapag gising ay Tagalog.", a:"Mantika"},
+{q:"Nakatalikod na ang prinsesa, ang mukha'y nakaharap pa.", a:"Balimbing"},
+{q:"Isang magandang senyora, ligid na ligid ng espada.", a:"Pinya"},
+{q:"Baha ni Ka Huli, haligi'y bali-bali, ang bubong ay sawali.", a:"Alimango"},
+{q:"Baboy ko sa palupandan, unga'y nakakarating kahit saan.", a:"Langka"},
+{q:"Kadena'y isinabit, sa batok nakakawit.", a:"Kuwintas"},
+{q:"Ginto sa kalangitan, di matitigtitigan.", a:"Araw"},
+{q:"Alipin ng hari, hindi makalakad, kung hindi itali.", a:"Sapatos"},
+{q:"Kahit gaano linisin, marumi pa rin ang tingin.", a:"Baboy"},
+{q:"Maliit pa si kumare, marunong ng humuni.", a:"Kuliglig"},
+{q:"Bahay ng salita, imbakan ng diwa.", a:"Aklat"},
+{q:"Heto na si lulong, bubulong-bulong.", a:"Bubuyog"},
+{q:"Ang mukha'y parang tao, magaling lumukso.", a:"Matsing"},
+{q:"Araw-araw bagong buhay, taon-taon namamatay.", a:"Kalendaryo"},
+{q:"Tubig ng pinagpala, walang makakuha kundi munting bata.", a:"Gatas ng ina"},
+{q:"Sa araw nahimhimbing at sa gabi ay gising.", a:"Paniki"},
+{q:"Maitim na parang alkitran, pumuputi kahit hindi labhan.", a:"Buhok"},
+{q:"Baka ko sa palupandan, unga'y nakakarating kahit saan.", a:"Kulog"},
+{q:"Kung sa ilan ay walang kwenta, sa gusali ay mahalaga.", a:"Bato"},
+{q:"Pag-aari mo, dala-dala mo, datapuwa't madalas gamitin ng iba kaysa iyo.", a:"Pangalan"},
+{q:"Dalawang magkaibigan, may talim ang tiyan; matagal nagkakagatan di pa nagkakasakitan.", a:"Gunting"},
+{q:"May bintana nguni't walang bubungan, may pinto nguni't walang hagdanan.", a:"Kumpisalan"},
+{q:"Di man isda, di naman itik, nakahuhuni kung ibig, maging sa kati maging sa tubig, ang huni'y nakakabuwisit.", a:"Palaka"},
+{q:"Nagtago si Pedro, nakalitaw ang ulo.", a:"Pako sa sahig"},
+{q:"Hindi ito kanin, di rin tinapay, ngunit sa umaga ito'y kinakain.", a:"Itlog"},
+{q:"Dahon ay kulay berde, tangkay ay matikas, sa lupa ito nanunuyo at sumisibol.", a:"Halaman"},
+{q:"May puno, walang sanga; may dahon, hindi sanga.", a:"Sandok"},
+{q:"Isang prinsipe, nakabihis ng itim, sumasayaw sa dilim.", a:"Paniki"},
+{q:"Hindi tao, hindi hayop, naglalakad sa hangin.", a:"Alon"},
+{q:"Laging naglalakad, hindi napapagod, sa bawat bahay tumatanaw.", a:"Dahon ng palasyo"},
+{q:"May bibig pero hindi nagsasalita, may mata pero hindi nakakakita.", a:"Karayom"},
+{q:"Araw-araw ay nagpapalit, wala kang makita ang araw.", a:"Orasan"},
+{q:"May bahay na walang pintuan, may tao na walang ulo.", a:"Boksingero"},
+{q:"Kung umaga ay nagigising, kung gabi ay natutulog.", a:"Buwan"},
+{q:"Hindi tao, hindi hayop, nakatira sa bubong.", a:"Ibon"},
+{q:"Sa tubig nabubuo, sa araw nawawala.", a:"Anino"},
+{q:"Laging bitbit ang bahay, kahit saan pumunta.", a:"Pagong"},
+{q:"Malaki ang tiyan, maliit ang ulo.", a:"Susi"},
+{q:"Isang magandang prinsesa, nakatago sa gubat.", a:"Ubas"},
+{q:"Hindi hari, hindi pare, nagdadala ng tala.", a:"Bituin"},
+{q:"May balat, may laman, ngunit walang buto.", a:"Saging"},
+{q:"Kung minsa'y maanghang, kung minsan ay matamis.", a:"Lanzones"},
+{q:"Maliit na palad, maraming ngipin.", a:"Siping ng kariton"},
+{q:"Hindi lumilipad pero may pakpak.", a:"Saranggola"},
+{q:"Munting bata, laging nakangiti.", a:"Bulaklak"},
+{q:"Sa lupa ay tumutubo, sa hangin ay lumilipad.", a:"Dahon"},
+{q:"Hindi manok, hindi itlog, may tunog sa umaga.", a:"Tuloy"},
+{q:"May paa, walang katawan.", a:"Upuan"},
+{q:"Hindi tao, hindi hayop, may buntot pero hindi pusa.", a:"Saranggola"},
+{q:"Hindi hayop, hindi tao, nakikipaglaro sa hangin.", a:"Dahon"},
+{q:"Malaki sa gubat, maliit sa bahay.", a:"Punong kahoy"},
+{q:"Laging lumilipad sa gabi.", a:"Paniki"},
+{q:"Hindi tao, hindi hayop, tumutugtog sa gabi.", a:"Kuliglig"},
+{q:"Sa gabi ay maliwanag, sa araw ay natutulog.", a:"Buwan"},
+{q:"May ulo, walang katawan.", a:"Pako"},
+{q:"Laging sumusunod sa iyo, hindi mo mahawakan.", a:"Anino"},
+{q:"Hindi hayop, hindi tao, may balahibo sa likod.", a:"Walis tingting"},
+{q:"Laging naglalakad sa umaga.", a:"Orasan"},
+{q:"Malakas sa umaga, mahina sa gabi.", a:"Kape"},
+{q:"Kung gabi ay maliwanag, kung araw ay natutulog.", a:"Bituin"},
+{q:"Hindi tao, hindi hayop, pumapalaot sa umaga.", a:"Ibon"},
+{q:"Malaki sa gubat, maliit sa bahay.", a:"Punong kahoy"},
+{q:"May ulo, may buntot, ngunit hindi hayop.", a:"Barya"},
+{q:"Hindi tao, hindi hayop, nanginginig kapag malamig.", a:"Dahon"},
+{q:"Laging bitbit ang bahay kahit saan.", a:"Pagong"},
+{q:"Maliit na prinsesa, nakatira sa gubat.", a:"Ubas"},
+{q:"Hindi tao, hindi hayop, tumutugtog sa gabi.", a:"Kuliglig"},
+{q:"May balat, may laman, ngunit walang buto.", a:"Saging"},
+{q:"Sa tubig nabubuo, sa araw nawawala.", a:"Anino"},
+{q:"Hindi lumilipad pero may pakpak.", a:"Saranggola"},
+{q:"Malakas sa umaga, mahina sa gabi.", a:"Kape"},
+{q:"Munting bata, laging nakangiti.", a:"Bulaklak"},
+{q:"May mata ngunit hindi nakakakita.", a:"Karayom"},
+{q:"Hindi tao, hindi hayop, nakatira sa bubong.", a:"Ibon"},
+{q:"Hindi hayop, hindi tao, may buntot pero hindi pusa.", a:"Saranggola"},
+{q:"Laging sumusunod sa iyo, hindi mo mahawakan.", a:"Anino"},
+{q:"Malaki sa gubat, maliit sa bahay.", a:"Punong kahoy"},
+{q:"Maliit pa si kumare, marunong ng humuni.", a:"Kuliglig"},
+{q:"Bahay ng salita, imbakan ng diwa.", a:"Aklat"},
+{q:"Ang mukha'y parang tao, magaling lumukso.", a:"Matsing"},
+{q:"Araw-araw bagong buhay, taon-taon namamatay.", a:"Kalendaryo"},
+{q:"Tubig ng pinagpala, walang makakuha kundi munting bata.", a:"Gatas ng ina"},
+{q:"Sa araw nahimhimbing at sa gabi ay gising.", a:"Paniki"},
+{q:"Maitim na parang alkitran, pumuputi kahit hindi labhan.", a:"Buhok"},
+{q:"Baka ko sa palupandan, unga'y nakakarating kahit saan.", a:"Kulog"},
+{q:"Kung sa ilan ay walang kwenta, sa gusali ay mahalaga.", a:"Bato"},
+{q:"Pag-aari mo, dala-dala mo, datapuwa't madalas gamitin ng iba kaysa iyo.", a:"Pangalan"},
+{q:"Dalawang magkaibigan, may talim ang tiyan; matagal nagkakagatan di pa nagkakasakitan.", a:"Gunting"},
+{q:"May bintana nguni't walang bubungan, may pinto nguni't walang hagdanan.", a:"Kumpisalan"},
+{q:"Di man isda, di naman itik, nakahuhuni kung ibig, maging sa kati maging sa tubig, ang huni'y nakakabuwisit.", a:"Palaka"}
+];
+
+// Game variables
+let lives = 10, score = 0;
+const livesEl = document.getElementById("lives");
+const scoreEl = document.getElementById("score");
+const riddleTxt = document.getElementById("riddleTxt");
+const choiceA = document.getElementById("choiceA");
+const choiceB = document.getElementById("choiceB");
+const choiceC = document.getElementById("choiceC");
+const feedback = document.getElementById("feedback");
+const startBtn = document.getElementById("startBtn");
+const choices = [choiceA, choiceB, choiceC];
+
+const correctSound = document.getElementById("correctSound");
+const wrongSound = document.getElementById("wrongSound");
+const gameOverSound = document.getElementById("gameOverSound");
+
+let currentRiddle = null;
+
+// Start game
+startBtn.addEventListener("click", () => {
+    lives = 10; score = 0;
+    livesEl.textContent = lives;
+    scoreEl.textContent = score;
+    startBtn.classList.add("hidden");
+    nextRiddle();
+});
+
+// Load a new riddle
+function nextRiddle(){
+    if(lives <= 0){
+        riddleTxt.textContent = "Game Over! 😢";
+        feedback.textContent = `Final Score: ${score}`;
+        choices.forEach(c=>c.disabled=true);
+        gameOverSound.play();
+        return;
+    }
+    feedback.textContent = "";
+    currentRiddle = riddles[Math.floor(Math.random()*riddles.length)];
+    riddleTxt.textContent = currentRiddle.q;
+    const opts = generateChoices(currentRiddle.a);
+    choiceA.textContent = opts[0];
+    choiceB.textContent = opts[1];
+    choiceC.textContent = opts[2];
+    choices.forEach(c=>c.disabled=false);
+}
+
+// Generate 3 choices with 1 correct
+function generateChoices(correct){
+    const opts = [correct];
+    while(opts.length<3){
+        let r = riddles[Math.floor(Math.random()*riddles.length)].a;
+        if(!opts.includes(r)) opts.push(r);
+    }
+    return shuffle(opts);
+}
+
+// Shuffle array
+function shuffle(arr){
+    for(let i=arr.length-1;i>0;i--){
+        let j=Math.floor(Math.random()*(i+1));
+        [arr[i],arr[j]]=[arr[j],arr[i]];
+    }
+    return arr;
+}
+
+// Choice click
+choices.forEach(btn=>{
+    btn.addEventListener("click", ()=>{
+        const selected = btn.textContent;
+        if(selected===currentRiddle.a){
+            feedback.textContent = "Tama! 🎉";
+            score++; scoreEl.textContent = score;
+            correctSound.play();
+        } else {
+            feedback.textContent = `Mali! Sagot: ${currentRiddle.a}`;
+            lives--; livesEl.textContent = lives;
+            wrongSound.play();
+        }
+        choices.forEach(c=>c.disabled=true);
+        setTimeout(nextRiddle, 1000);
+    });
+});
+</script>
+</body>
+</html>

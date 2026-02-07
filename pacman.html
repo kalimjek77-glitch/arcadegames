@@ -1,0 +1,256 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Realistic Neon Snake</title>
+<style>
+* { margin:0; padding:0; box-sizing:border-box; font-family:'Segoe UI', sans-serif; }
+html, body { overflow:hidden; height:100%; background:#0a0a1a; display:flex; flex-direction:column; align-items:center; }
+
+/* Title */
+h1 {
+  margin:20px 0 10px;
+  font-size:2rem;
+  letter-spacing:1px;
+  color:#00ffe5;
+  text-shadow: 0 0 10px #00ffe5, 0 0 20px #00b3b3, 0 0 30px #007a8c;
+}
+
+/* Level Buttons */
+#levelButtons {
+  display:flex; justify-content:center; gap:15px; margin-bottom:10px;
+}
+.level-btn {
+  padding:7px 18px;
+  border-radius:15px;
+  background: rgba(0,255,229,0.2);
+  color:#fff;
+  font-weight:bold;
+  box-shadow:0 4px 12px rgba(0,255,229,0.5), inset 0 0 5px rgba(0,255,229,0.3);
+  cursor:pointer;
+  transition:0.2s;
+}
+.level-btn.selected {
+  background: linear-gradient(135deg,#00ffe5,#00b3b3);
+  box-shadow:0 4px 20px #00ffe5, 0 0 15px #00b3b3 inset;
+}
+.level-btn:active { transform:scale(0.95); }
+
+/* Scoreboard */
+#scoreboard {
+  font-size:1.4rem;
+  color:#00ffe5;
+  text-shadow:0 0 8px #00ffe5,0 0 15px #00b3b3;
+  margin-bottom:15px;
+}
+
+/* Game Container */
+#gameContainer {
+  position:relative; width:90vw; max-width:400px; height:65vh;
+  background:linear-gradient(145deg,#111,#1c1c1c);
+  border-radius:25px; overflow:hidden;
+  box-shadow:0 0 40px #00ffe5, inset 0 0 20px #007a8c;
+  margin-bottom:20px;
+}
+canvas { width:100%; height:100%; display:block; }
+
+/* Game Over Overlay */
+#gameOver {
+  position:absolute; top:0; left:0; width:100%; height:100%;
+  background:rgba(0,0,0,0.85); display:flex; flex-direction:column;
+  align-items:center; justify-content:center;
+  font-size:2rem; color:#ff2e63; display:none;
+  text-shadow: 0 0 8px #ff2e63,0 0 20px #ff6699;
+}
+#gameOver span { font-size:1rem; margin-top:10px; color:#00ffe5; text-shadow:0 0 8px #00ffe5; }
+
+/* Arrow Controls (D-pad) BELOW container */
+#controls {
+  width:200px; height:200px;
+  display:grid;
+  grid-template-columns:60px 60px 60px;
+  grid-template-rows:60px 60px 60px;
+  gap:10px;
+  touch-action:none;
+  margin-top:20px;
+}
+.btn {
+  width:60px; height:60px; border-radius:20px;
+  background: linear-gradient(145deg, rgba(0,255,229,0.4), rgba(0,179,179,0.3));
+  display:flex; align-items:center; justify-content:center;
+  font-size:1.5rem; color:#fff; font-weight:bold;
+  box-shadow: 0 5px 15px rgba(0,255,229,0.6), inset 0 0 10px rgba(0,255,229,0.3);
+  user-select:none;
+  transition: 0.1s;
+}
+.btn:active {
+  transform: scale(0.9);
+  background:linear-gradient(145deg, rgba(0,255,229,0.7), rgba(0,179,179,0.6));
+}
+.invisible { visibility:hidden; }
+
+/* Mobile adjustments */
+@media(max-width: 500px){
+  #controls { width:180px; height:180px; grid-template-columns:50px 50px 50px; grid-template-rows:50px 50px 50px; gap:8px; }
+  .btn { width:50px; height:50px; font-size:1.3rem; border-radius:15px; }
+  #gameContainer { height:60vh; }
+}
+</style>
+</head>
+<body>
+
+<h1>Neon Snake</h1>
+
+<!-- Level Buttons -->
+<div id="levelButtons">
+  <div class="level-btn selected" data-speed="20">Easy</div>
+  <div class="level-btn" data-speed="12">Medium</div>
+  <div class="level-btn" data-speed="8">Hard</div>
+</div>
+
+<div id="scoreboard">Score: 0 | High Score: 0</div>
+
+<div id="gameContainer">
+  <canvas id="gameCanvas"></canvas>
+  <div id="gameOver">GAME OVER<span>Tap anywhere to restart</span></div>
+</div>
+
+<!-- Arrow buttons (D-pad) -->
+<div id="controls">
+  <div class="invisible"></div>
+  <div class="btn" data-dir="up">↑</div>
+  <div class="invisible"></div>
+  <div class="btn" data-dir="left">←</div>
+  <div class="btn" data-dir="down">↓</div>
+  <div class="btn" data-dir="right">→</div>
+</div>
+
+<script>
+const canvas = document.getElementById('gameCanvas');
+const ctx = canvas.getContext('2d');
+const container = document.getElementById('gameContainer');
+canvas.width = container.clientWidth;
+canvas.height = container.clientHeight;
+
+const gridSize = 20;
+const tileCountX = Math.floor(canvas.width / gridSize);
+const tileCountY = Math.floor(canvas.height / gridSize);
+
+let snake = [{x:5,y:5}];
+let velocity = {x:1,y:0};
+let food = spawnFood();
+let score = 0;
+let highScore = 0;
+let speed = 20;
+let gameOver = false;
+let count = 0;
+
+// Level buttons
+document.querySelectorAll('.level-btn').forEach(btn=>{
+  btn.addEventListener('click', ()=>{
+    document.querySelectorAll('.level-btn').forEach(b=>b.classList.remove('selected'));
+    btn.classList.add('selected');
+    speed = parseInt(btn.dataset.speed);
+  });
+});
+
+// Arrow buttons
+document.querySelectorAll('#controls .btn').forEach(btn=>{
+  btn.addEventListener('click', ()=>{
+    const dir = btn.dataset.dir;
+    switch(dir){
+      case 'up': if(velocity.y===0) velocity={x:0,y:-1}; break;
+      case 'down': if(velocity.y===0) velocity={x:0,y:1}; break;
+      case 'left': if(velocity.x===0) velocity={x:-1,y:0}; break;
+      case 'right': if(velocity.x===0) velocity={x:1,y:0}; break;
+    }
+  });
+});
+
+// Tap to restart
+container.addEventListener('click', ()=>{ if(gameOver) resetGame(); });
+
+function spawnFood(){
+  return {x:Math.floor(Math.random()*tileCountX), y:Math.floor(Math.random()*tileCountY)};
+}
+
+function resetGame(){
+  snake=[{x:5,y:5}];
+  velocity={x:1,y:0};
+  score=0;
+  food=spawnFood();
+  gameOver=false;
+  document.getElementById('gameOver').style.display='none';
+  document.getElementById('scoreboard').innerText = `Score: ${score} | High Score: ${highScore}`;
+}
+
+function gameLoop(){
+  requestAnimationFrame(gameLoop);
+  if(++count<speed) return; count=0;
+  if(!gameOver){ update(); draw(); }
+}
+
+function update(){
+  const head = {x:snake[0].x+velocity.x, y:snake[0].y+velocity.y};
+  if(head.x<0) head.x=tileCountX-1;
+  if(head.x>=tileCountX) head.x=0;
+  if(head.y<0) head.y=tileCountY-1;
+  if(head.y>=tileCountY) head.y=0;
+
+  if(snake.some(seg=>seg.x===head.x && seg.y===head.y)){
+    gameOver=true;
+    if(score>highScore) highScore=score;
+    document.getElementById('gameOver').style.display='flex';
+    return;
+  }
+
+  snake.unshift(head);
+
+  if(head.x===food.x && head.y===food.y){
+    score++;
+    food=spawnFood();
+  } else { snake.pop(); }
+
+  document.getElementById('scoreboard').innerText = `Score: ${score} | High Score: ${highScore}`;
+}
+
+function draw(){
+  ctx.fillStyle='#111';
+  ctx.fillRect(0,0,canvas.width,canvas.height);
+
+  // Food
+  ctx.fillStyle='#ff2e63';
+  ctx.shadowColor = "#ff2e63";
+  ctx.shadowBlur = 15;
+  ctx.beginPath();
+  ctx.arc(food.x*gridSize + gridSize/2, food.y*gridSize + gridSize/2, gridSize/2-2, 0, Math.PI*2);
+  ctx.fill();
+  ctx.shadowBlur = 0;
+
+  // Snake
+  snake.forEach((seg,index)=>{
+    if(index===0){
+      ctx.fillStyle='#00ffe5';
+      ctx.strokeStyle='#00b3b3';
+      ctx.shadowColor = "#00ffe5";
+      ctx.shadowBlur = 20;
+      ctx.lineWidth=2;
+    } else {
+      ctx.fillStyle='#00a3c4';
+      ctx.strokeStyle='#007a8c';
+      ctx.shadowColor = "#00a3c4";
+      ctx.shadowBlur = 10;
+      ctx.lineWidth=1;
+    }
+    ctx.fillRect(seg.x*gridSize, seg.y*gridSize, gridSize-2, gridSize-2);
+    ctx.strokeRect(seg.x*gridSize, seg.y*gridSize, gridSize-2, gridSize-2);
+  });
+  ctx.shadowBlur = 0;
+}
+
+gameLoop();
+</script>
+
+</body>
+</html>

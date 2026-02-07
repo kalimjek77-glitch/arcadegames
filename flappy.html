@@ -1,0 +1,263 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+<title>Neon Glass Tetris</title>
+
+<style>
+*{
+  margin:0;padding:0;box-sizing:border-box;
+  font-family:'Segoe UI',sans-serif;
+}
+html,body{
+  width:100%;height:100%;
+  background:radial-gradient(circle at top,#2b2b6f,#0a0a1a);
+  display:flex;justify-content:center;align-items:center;
+  overflow:hidden;color:#fff;
+}
+
+/* ===== CONTAINER ===== */
+#gameContainer{
+  width:100%;
+  max-width:360px;
+  height:100vh;
+  display:flex;
+  flex-direction:column;
+  padding:12px;
+  position:relative;
+}
+
+/* ===== GAME CANVAS ===== */
+#tetris{
+  flex:1;
+  width:100%;
+  background:rgba(10,10,30,0.55);
+  border-radius:18px;
+  border:1px solid rgba(255,255,255,0.25);
+  backdrop-filter:blur(10px);
+  box-shadow:
+    0 0 18px rgba(0,255,255,0.35),
+    inset 0 0 25px rgba(255,255,255,0.05);
+}
+
+/* ===== NEXT PIECE ===== */
+#nextContainer{
+  position:absolute;
+  top:18px;
+  right:18px;
+  width:64px;height:64px;
+  background:rgba(20,20,40,0.6);
+  backdrop-filter:blur(8px);
+  border-radius:14px;
+  border:1px solid rgba(255,255,255,0.25);
+  box-shadow:0 0 12px rgba(255,0,255,0.6);
+  display:flex;justify-content:center;align-items:center;
+}
+#next{width:90%;height:90%;}
+
+/* ===== SCORE ===== */
+#score{
+  margin:10px 0;
+  text-align:center;
+  font-size:18px;
+  font-weight:700;
+  color:#00fff7;
+  text-shadow:0 0 8px rgba(0,255,255,0.8);
+}
+
+/* ===== BUTTONS ===== */
+#buttons{
+  display:flex;
+  gap:14px;
+  padding:12px 4px 20px;
+}
+button{
+  flex:1;
+  height:60px;
+  font-size:24px;
+  border-radius:18px;
+  border:1px solid rgba(255,255,255,0.35);
+  background:linear-gradient(135deg,#00fff7,#8f00ff);
+  color:#fff;
+  font-weight:bold;
+  box-shadow:
+    0 0 15px rgba(0,255,255,0.7),
+    inset 0 0 12px rgba(255,255,255,0.25);
+}
+button:active{
+  transform:scale(0.94);
+  box-shadow:
+    0 0 6px rgba(0,255,255,0.9),
+    inset 0 0 6px rgba(0,0,0,0.4);
+}
+
+/* ===== GAME OVER ===== */
+#overlay{
+  position:fixed;
+  inset:0;
+  display:none;
+  justify-content:center;
+  align-items:center;
+  background:rgba(5,5,20,0.85);
+  backdrop-filter:blur(8px);
+  z-index:10;
+  text-align:center;
+}
+#overlay div{
+  padding:30px 40px;
+  border-radius:20px;
+  border:1px solid rgba(255,255,255,0.35);
+  background:rgba(20,20,40,0.7);
+  box-shadow:0 0 30px rgba(255,0,255,0.8);
+  font-size:28px;
+  font-weight:800;
+  color:#ff66ff;
+  text-shadow:0 0 10px rgba(255,0,255,1);
+}
+#overlay small{
+  display:block;
+  margin-top:10px;
+  font-size:14px;
+  color:#00fff7;
+}
+</style>
+</head>
+
+<body>
+
+<div id="gameContainer">
+  <canvas id="tetris"></canvas>
+
+  <div id="nextContainer">
+    <canvas id="next"></canvas>
+  </div>
+
+  <div id="score">Score: 0</div>
+
+  <div id="buttons">
+    <button id="left">⬅</button>
+    <button id="down">⬇</button>
+    <button id="right">➡</button>
+  </div>
+</div>
+
+<div id="overlay">
+  <div>GAME OVER<br><small>TAP TO RESTART</small></div>
+</div>
+
+<script>
+/* ===== AUDIO ===== */
+const audioCtx=new (window.AudioContext||window.webkitAudioContext)();
+const beep=(f,d=0.08)=>{
+  const o=audioCtx.createOscillator(),g=audioCtx.createGain();
+  o.frequency.value=f;o.type="square";
+  g.gain.value=0.08;
+  o.connect(g);g.connect(audioCtx.destination);
+  o.start();o.stop(audioCtx.currentTime+d);
+};
+const sMove=()=>beep(320);
+const sRotate=()=>beep(620);
+const sDrop=()=>beep(180,0.12);
+const sLine=()=>beep(900,0.15);
+const sGameOver=()=>beep(110,0.5);
+
+/* ===== GAME ===== */
+const canvas=tetris,ctx=canvas.getContext("2d");
+const nctx=next.getContext("2d");
+const ROWS=20,COLS=10;
+const colors=[null,"#ff4dff","#4df7ff","#fff44d","#6dff4d","#c94dff","#ff944d","#4d7bff"];
+const pieces=[
+ [],[[1,1,1],[0,1,0]],[[0,2,2],[2,2,0]],[[3,3,0],[0,3,3]],
+ [[4,4],[4,4]],[[5,0,0],[5,5,5]],[[0,0,6],[6,6,6]],[[7,7,7,7]]
+];
+const arena=Array.from({length:ROWS},()=>Array(COLS).fill(0));
+
+function resize(){
+  canvas.width=canvas.clientWidth;
+  canvas.height=canvas.clientHeight;
+  next.width=next.clientWidth;
+  next.height=next.clientHeight;
+  ctx.setTransform(canvas.width/COLS,0,0,canvas.height/ROWS,0,0);
+  nctx.setTransform(next.width/4,0,0,next.height/4,0,0);
+}
+resize();window.addEventListener("resize",resize);
+
+const collide=(a,p)=>p.matrix.some((r,y)=>r.some((v,x)=>v&&(a[y+p.pos.y]?.[x+p.pos.x])!==0));
+const merge=(a,p)=>p.matrix.forEach((r,y)=>r.forEach((v,x)=>v&&(a[y+p.pos.y][x+p.pos.x]=v)));
+const drawMatrix=(m,c,o)=>m.forEach((r,y)=>r.forEach((v,x)=>{
+  if(v){c.fillStyle=colors[v];c.fillRect(x+o.x,y+o.y,1,1);}
+}));
+
+function draw(){
+  ctx.fillStyle="#0b0b1f";ctx.fillRect(0,0,COLS,ROWS);
+  drawMatrix(arena,ctx,{x:0,y:0});
+  drawMatrix(player.matrix,ctx,player.pos);
+  nctx.fillStyle="#0b0b1f";nctx.fillRect(0,0,4,4);
+  drawMatrix(nextPiece,nctx,{x:0,y:0});
+}
+
+const rotate=m=>m[0].map((_,i)=>m.map(r=>r[i]).reverse());
+let player={pos:{x:0,y:0},matrix:null,score:0};
+let nextPiece=pieces[Math.random()*7|0+1];
+let anim,over=false;
+
+function reset(){
+  player.matrix=nextPiece;
+  nextPiece=pieces[Math.random()*7|0+1];
+  player.pos.y=0;
+  player.pos.x=(COLS/2|0)-(player.matrix[0].length/2|0);
+  if(collide(arena,player)){
+    overlay.style.display="flex";sGameOver();over=true;
+    cancelAnimationFrame(anim);
+  }
+}
+
+function clearLines(){
+  let l=0;
+  for(let y=ROWS-1;y>=0;y--){
+    if(arena[y].every(v=>v)){
+      arena.splice(y,1);arena.unshift(Array(COLS).fill(0));
+      l++;y++;
+    }
+  }
+  if(l){player.score+=l*10;score.textContent="Score: "+player.score;sLine();}
+}
+
+function drop(){
+  player.pos.y++;
+  if(collide(arena,player)){
+    player.pos.y--;merge(arena,player);sDrop();clearLines();reset();
+  }
+}
+
+let d=0,last=0;
+function loop(t=0){
+  d+=t-last;last=t;
+  if(d>800){drop();d=0;}
+  draw();anim=requestAnimationFrame(loop);
+}
+
+reset();anim=requestAnimationFrame(loop);
+
+/* ===== CONTROLS ===== */
+left.ontouchstart=()=>{player.pos.x--;if(collide(arena,player))player.pos.x++;else sMove();}
+right.ontouchstart=()=>{player.pos.x++;if(collide(arena,player))player.pos.x--;else sMove();}
+let di;down.ontouchstart=()=>di=setInterval(drop,60);
+down.ontouchend=()=>clearInterval(di);
+canvas.addEventListener("touchstart",e=>{
+  e.preventDefault();
+  if(over){
+    arena.forEach(r=>r.fill(0));
+    player.score=0;score.textContent="Score: 0";
+    overlay.style.display="none";over=false;
+    reset();anim=requestAnimationFrame(loop);
+  }else{
+    player.matrix=rotate(player.matrix);sRotate();
+  }
+},{passive:false});
+overlay.addEventListener("touchstart",()=>location.reload());
+</script>
+
+</body>
+</html>

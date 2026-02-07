@@ -1,0 +1,133 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Arcade Games</title>
+
+<style>
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+  font-family: "Segoe UI", Arial, sans-serif;
+}
+
+/* BODY BACKGROUND */
+body {
+  min-height: 100vh;
+  background:
+    linear-gradient(rgba(0,0,0,0.7), rgba(0,0,0,0.7)),
+    url("klm.jpg") no-repeat center center / cover;
+  padding: 18px;
+}
+
+/* TITLE */
+h1 {
+  color: #fff;
+  text-align: center;
+  margin-bottom: 20px;
+  font-size: 26px;
+  letter-spacing: 1px;
+}
+
+/* GAME BUTTON (CARD) */
+.game-card {
+  width: 100%;
+  height: 115px;
+  margin-bottom: 16px;
+  padding: 16px 18px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+
+  background: linear-gradient(
+    135deg,
+    rgba(40,60,120,0.85),
+    rgba(20,30,60,0.85)
+  );
+
+  border-radius: 18px;
+  border: 1px solid rgba(255,255,255,0.18);
+  backdrop-filter: blur(8px);
+
+  text-decoration: none;
+  cursor: pointer;
+
+  transition: transform 0.15s ease, box-shadow 0.15s ease;
+}
+
+.game-card:hover {
+  box-shadow: 0 0 18px rgba(80,140,255,0.35);
+}
+
+.game-card:active {
+  transform: scale(0.96);
+}
+
+/* TEXT */
+.game-title {
+  color: #fff;
+  font-size: 22px;
+  font-weight: 700;
+}
+
+.game-sub {
+  color: rgba(255,255,255,0.75);
+  font-size: 13px;
+  margin-top: 4px;
+}
+
+/* GIF */
+.game-gif {
+  width: 66px;
+  height: 66px;
+  border-radius: 14px;
+  object-fit: cover;
+  border: 2px solid rgba(255,255,255,0.5);
+}
+</style>
+</head>
+
+<body>
+
+<h1>🎮 Arcade</h1>
+
+<!-- SPACE WAR -->
+<a href="starts.html" class="game-card">
+  <div>
+    <div class="game-title">Space War</div>
+    <div class="game-sub">Battle in space</div>
+  </div>
+  <img src="hiii.gif" class="game-gif">
+</a>
+
+<!-- FLAPPY -->
+<a href="flappy.html" class="game-card">
+  <div>
+    <div class="game-title">Tetris</div>
+    <div class="game-sub">Stack the blocks</div>
+  </div>
+  <img src="tetris.gif" class="game-gif">
+</a>
+
+<!-- SNAKE -->
+<a href="pacman.html" class="game-card">
+  <div>
+    <div class="game-title">Snake</div>
+    <div class="game-sub">Classic arcade</div>
+  </div>
+  <img src="snake (2).gif" class="game-gif">
+</a>
+
+<!-- RIDDLE -->
+<a href="riddle.html" class="game-card">
+  <div>
+    <div class="game-title">Riddle</div>
+    <div class="game-sub">Think smart</div>
+  </div>
+  <img src="riddle.gif" class="game-gif">
+</a>
+
+</body>
+</html>
